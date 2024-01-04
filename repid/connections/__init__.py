@@ -18,9 +18,9 @@ __all__ = [
 ]
 
 if is_installed("aiormq"):
-    from repid.connections.rabbitmq import RabbitMessageBroker
+    from repid.connections.rabbitmq import ExchangeOverrideMapping, RabbitMessageBroker
 
-    __all__ += ["RabbitMessageBroker"]
+    __all__ += ["RabbitMessageBroker", "ExchangeOverrideMapping"]
 
 if is_installed("redis"):
     from repid.connections.redis import RedisBucketBroker, RedisMessageBroker

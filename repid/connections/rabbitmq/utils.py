@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, TypedDict
 
 if TYPE_CHECKING:
@@ -31,3 +32,14 @@ def wait_until(params: ParametersT | None = None) -> datetime | None:
 class MessageContent(TypedDict):
     payload: str
     parameters: str
+
+
+@dataclass(frozen=True)
+class ExchangeOverrideMapping:
+    """
+    Override exchange name for jobs which share job_name and queue_name combination.
+    """
+
+    exchange_name: str
+    job_name: str  # routing on app level
+    queue_name: str | None = None  # routing on broker level

@@ -11,6 +11,7 @@ from repid._utils import JSON_ENCODER
 from repid.connections.abc import MessageBrokerT
 from repid.connections.rabbitmq.consumer import _RabbitConsumer
 from repid.connections.rabbitmq.utils import (
+    ExchangeOverrideMapping,
     MessageContent,
     durable_message_decider,
     qnc,
@@ -35,10 +36,12 @@ class RabbitMessageBroker(MessageBrokerT):
         *,
         queue_name_constructor: QueueNameConstructorT = qnc,
         is_durable_decider: DurableMessageDeciderT = durable_message_decider,
+        exchange_overrides: set[ExchangeOverrideMapping] | None = None,
     ) -> None:
         self.dsn = dsn
         self.qnc = queue_name_constructor
         self.idd = is_durable_decider
+        self.exchange_overrides = exchange_overrides if exchange_overrides is not None else set()
         self.__connection: aiormq.abc.AbstractConnection | None = None
         self.__channel: aiormq.abc.AbstractChannel | None = None
         self._id_to_delivery_tag: dict[str, int] = {}
@@ -82,7 +85,20 @@ class RabbitMessageBroker(MessageBrokerT):
             if millis > 0:
                 exp = str(millis)
 
+        # override exchange name using user input compared with RoutingKeyT
+        exchange_override = next(
+            (
+                override
+                for override in self.exchange_overrides
+                if override.job_name == key.topic
+                and (override.queue_name is None or override.queue_name == key.queue)
+            ),
+            None,
+        )
+        logger.debug("Enqueueing message ({routing_key}).", extra={"routing_key": key})
+
         confirmation = await self._channel.basic_publish(
+            exchange=exchange_override.exchange_name if exchange_override is not None else "",
             body=JSON_ENCODER.encode(body).encode(),
             routing_key=self.qnc(key.queue, delayed=exp is not None),
             properties=aiormq.spec.Basic.Properties(
